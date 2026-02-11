@@ -40,8 +40,8 @@ public record ApiResponse<T>(
                 .build();
     }
 
-    public static ApiResponse<Void> error(HttpStatus status, String message) {
-        return ApiResponse.<Void>builder()
+    public static <T> ApiResponse<T> error(HttpStatus status, String message) {
+        return ApiResponse.<T>builder()
                 .success(false)
                 .status(status.value())
                 .message(message)
