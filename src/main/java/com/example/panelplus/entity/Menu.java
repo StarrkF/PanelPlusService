@@ -3,6 +3,8 @@ package com.example.panelplus.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 @Entity
@@ -24,4 +26,7 @@ public class Menu extends BaseEntity  {
 
     @Column(nullable = false)
     private Integer weight;
+
+    @OneToMany(mappedBy = "menu", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<MenuTranslation> translations = new HashSet<>();
 }

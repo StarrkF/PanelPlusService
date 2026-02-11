@@ -3,6 +3,8 @@ package com.example.panelplus.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 @Entity
@@ -24,4 +26,7 @@ public class Post extends BaseEntity  {
 
     @Column(nullable = false)
     private Integer status;
+
+    @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<PostTranslation> translations = new HashSet<>();
 }
