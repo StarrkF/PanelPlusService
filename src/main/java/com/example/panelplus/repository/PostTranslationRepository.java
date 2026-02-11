@@ -16,4 +16,6 @@ public interface PostTranslationRepository extends JpaRepository<PostTranslation
     Optional<PostTranslation> findByLanguageAndSlug(String language, String slug);
 
     List<PostTranslation> findByLanguage(String language);
+
+    boolean existsByPostIdAndLanguage_Code(UUID postId, String language);
 }

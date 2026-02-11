@@ -6,16 +6,19 @@ import com.example.panelplus.dto.response.PostResponse;
 import com.example.panelplus.entity.Language;
 import com.example.panelplus.entity.Post;
 import com.example.panelplus.entity.PostTranslation;
+import com.example.panelplus.entity.User;
 import com.example.panelplus.mapper.PostMapper;
 import com.example.panelplus.repository.LanguageRepository;
 import com.example.panelplus.repository.PostRepository;
+import com.example.panelplus.repository.PostTranslationRepository;
+import com.example.panelplus.repository.UserRepository;
+import com.example.panelplus.util.UtilService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 import static java.time.LocalDateTime.now;
 
@@ -25,73 +28,60 @@ public class PostService extends BaseService<Post, UUID, PostRepository> {
     
     private final PostMapper postMapper;
     private final LanguageRepository languageRepository;
+    private final PostTranslationRepository postTranslationRepository;
+    private final UserRepository userRepository;
 
-    public PostService(PostRepository repo, PostMapper postMapper, LanguageRepository languageRepository) {
+    public PostService(PostRepository repo, PostMapper postMapper, LanguageRepository languageRepository, PostTranslationRepository postTranslationRepository, UserRepository userRepository) {
         super(repo);
         this.postMapper = postMapper;
         this.languageRepository = languageRepository;
+        this.postTranslationRepository = postTranslationRepository;
+        this.userRepository = userRepository;
     }
 
-    public Post create(PostRequest request) {
-
+    public PostResponse create(PostRequest request) {
         Post post = postMapper.toEntity(request);
 
-        // parent save
-        post = getRepository().save(post);
+        User user = userRepository.getReferenceById(request.userId());
+        post.setUser(user);
 
-        // translations
-        if (request.translations() != null) {
+        // Translations işlemleri
+        if (request.translations() != null && !request.translations().isEmpty()) {
+            if (post.getTranslations() == null) {
+                post.setTranslations(new HashSet<>());
+            }
+
             for (PostTranslationRequest trDto : request.translations()) {
+                Language language = languageRepository.getReferenceById(trDto.language());
 
                 PostTranslation tr = postMapper.toTranslationEntity(trDto);
-
-                // FK set
+                String slug = UtilService.toSlug(trDto.title());
                 tr.setPost(post);
-
-                Language language = languageRepository
-                        .findById(trDto.language())
-                        .orElseThrow(() -> new RuntimeException("Language not found"));
-
+                tr.setSlug(slug);
                 tr.setLanguage(language);
 
                 post.getTranslations().add(tr);
             }
         }
 
-        return getRepository().save(post);
+        Post savedPost = getRepository().save(post);
+        return postMapper.toResponse(savedPost);
     }
 
-    public Post update(UUID id, PostRequest request) {
+    public PostResponse update(UUID id, PostRequest request) {
+        Post post = getRepository().findById(id)
+                .orElseThrow(() -> new RuntimeException("Post not found"));
 
-        Post post = getRepository().findById(id).orElseThrow();
-
+        // Ana alanları güncelle
         postMapper.updateEntity(post, request);
 
+        // İlişkili tabloları (Translations) merge et
         if (request.translations() != null) {
-
-            for (PostTranslationRequest trDto : request.translations()) {
-
-                PostTranslation tr = post.getTranslations().stream()
-                        .filter(t -> t.getLanguage().getCode().equals(trDto.language()))
-                        .findFirst()
-                        .orElseGet(() -> {
-                            PostTranslation newTr = new PostTranslation();
-                            newTr.setPost(post);
-                            post.getTranslations().add(newTr);
-                            return newTr;
-                        });
-
-                postMapper.updateTranslation(tr, trDto);
-
-                Language lang = languageRepository
-                        .findById(trDto.language())
-                        .orElseThrow();
-
-                tr.setLanguage(lang);
-            }
+            mergeTranslations(post, request.translations());
         }
 
-        return getRepository().save(post);
+        Post savedPost = getRepository().save(post);
+        return postMapper.toResponse(savedPost);
     }
 
     @Transactional(readOnly = true)
@@ -117,26 +107,58 @@ public class PostService extends BaseService<Post, UUID, PostRepository> {
     private void mergeTranslations(Post entity, List<PostTranslationRequest> dtos) {
         if (dtos == null) return;
 
-        var current = entity.getTranslations();
+        Set<PostTranslation> currentTranslations = entity.getTranslations();
+        if (currentTranslations == null) {
+            currentTranslations = new HashSet<>();
+            entity.setTranslations(currentTranslations);
+        }
 
-        // update + add
-        dtos.forEach(dto -> {
-            PostTranslation found = current.stream()
-                    .filter(t -> t.getLanguage().equals(dto.language()))
-                    .findFirst()
-                    .orElse(null);
+        // 1. Güncelleme ve Ekleme
+        for (PostTranslationRequest dto : dtos) {
+            Optional<PostTranslation> existingTr = currentTranslations.stream()
+                    .filter(t -> t.getLanguage().getCode().equals(dto.language())) // ID karşılaştırması düzeltildi
+                    .findFirst();
 
-            if (found != null) {
-                postMapper.updateTranslation(found, dto);
+            if (existingTr.isPresent()) {
+                // Mevcut çeviriyi güncelle
+                postMapper.updateTranslation(existingTr.get(), dto);
             } else {
+                // Yeni çeviri ekle
+                Language language = languageRepository.getReferenceById(dto.language());
                 PostTranslation newTr = postMapper.toTranslationEntity(dto);
                 newTr.setPost(entity);
-                current.add(newTr);
+                newTr.setLanguage(language);
+                currentTranslations.add(newTr);
             }
-        });
+        }
 
-        current.removeIf(tr ->
-                dtos.stream().noneMatch(d -> d.language().equals(tr.getLanguage()))
+        // 2. Silme (Request listesinde olmayan dilleri kaldır)
+        currentTranslations.removeIf(tr ->
+                dtos.stream().noneMatch(dto -> dto.language().equals(tr.getLanguage().getCode()))
         );
+    }
+
+    @Transactional
+    public void addTranslation(UUID postId, PostTranslationRequest dto) {
+
+        Post post = getRepository().findById(postId)
+                .orElseThrow(() -> new RuntimeException("Post not found"));
+
+        boolean exists = postTranslationRepository
+                .existsByPostIdAndLanguage_Code(postId, dto.language());
+
+        if (exists) {
+            throw new RuntimeException("Translation already exists for this language");
+        }
+
+        Language language = languageRepository.findById(dto.language())
+                .orElseThrow(() -> new RuntimeException("Language not found"));
+
+        PostTranslation translation = postMapper.toTranslationEntity(dto);
+        translation.setId(UUID.randomUUID());
+        translation.setPost(post);
+        translation.setLanguage(language);
+
+        postTranslationRepository.save(translation);
     }
 }

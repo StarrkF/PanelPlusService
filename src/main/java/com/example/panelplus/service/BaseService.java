@@ -4,6 +4,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.List;
+
 public abstract class BaseService<E, ID, R extends JpaRepository<E, ID>> {
 
     private final R repo;
@@ -20,11 +22,11 @@ public abstract class BaseService<E, ID, R extends JpaRepository<E, ID>> {
         return repo.findById(id).orElse(null);
     }
 
-    public Iterable<E> findAll() {
+    public List<E> findAll() {
         return repo.findAll();
     }
 
-    public Iterable<E> findAllById(Iterable<ID> ids) {
+    public List<E> findAllById(List<ID> ids) {
         if ( ids == null ) return null;
         return repo.findAllById(ids);
     }
@@ -49,7 +51,7 @@ public abstract class BaseService<E, ID, R extends JpaRepository<E, ID>> {
         repo.delete(entity);
     }
 
-    public void deleteAll(Iterable<? extends E> entities) {
+    public void deleteAll(List<? extends E> entities) {
         repo.deleteAll(entities);
     }
 
@@ -61,7 +63,7 @@ public abstract class BaseService<E, ID, R extends JpaRepository<E, ID>> {
         return repo.save(entity);
     }
 
-    public Iterable<E> saveAll(Iterable<E> entities) {
+    public List<E> saveAll(List<E> entities) {
         return repo.saveAll(entities);
     }
 
