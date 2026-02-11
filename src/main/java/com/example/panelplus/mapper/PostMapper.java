@@ -27,6 +27,7 @@ public interface PostMapper {
     @Mapping(target = "language", ignore = true)
     @Mapping(target = "post", ignore = true)
     @Mapping(target = "id", ignore = true)
+    @Mapping(target = "slug", ignore = true)
     PostTranslation toTranslationEntity(PostTranslationRequest dto);
 
     @Mapping(target = "language", ignore = true)
