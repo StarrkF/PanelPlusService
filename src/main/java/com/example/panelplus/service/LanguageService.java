@@ -2,10 +2,12 @@ package com.example.panelplus.service;
 
 import com.example.panelplus.dto.LanguageDto;
 import com.example.panelplus.entity.Language;
+import com.example.panelplus.exception.BaseException;
 import com.example.panelplus.mapper.LanguageMapper;
 import com.example.panelplus.repository.LanguageRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,7 +26,7 @@ public class LanguageService extends BaseService<Language, String, LanguageRepos
 
     public LanguageDto create(LanguageDto request) {
         if (getRepository().existsById(request.code())) {
-            throw new RuntimeException("Language with code " + request.code() + " already exists.");
+            throw new BaseException("Language with code " + request.code() + " already exists.", HttpStatus.ALREADY_REPORTED);
         }
 
         if (request.defaultLanguage()) {
@@ -37,7 +39,7 @@ public class LanguageService extends BaseService<Language, String, LanguageRepos
 
     @Transactional(readOnly = true)
     public LanguageDto get(String code) {
-        return getRepository().findById(code).map(languageMapper::toDto).orElseThrow(() -> new RuntimeException("Language not found"));
+        return getRepository().findById(code).map(languageMapper::toDto).orElseThrow(() -> new BaseException("Language not found", HttpStatus.NOT_FOUND));
     }
 
     @Transactional(readOnly = true)
@@ -48,7 +50,7 @@ public class LanguageService extends BaseService<Language, String, LanguageRepos
 
     public void delete(String code) {
         if (!getRepository().existsById(code)) {
-            throw new RuntimeException("Language not found");
+            throw new BaseException("Language not found", HttpStatus.NOT_FOUND);
         }
         getRepository().deleteById(code);
     }

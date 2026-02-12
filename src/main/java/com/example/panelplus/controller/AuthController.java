@@ -4,6 +4,7 @@ import com.example.panelplus.dto.request.LoginRequest;
 import com.example.panelplus.dto.request.RegisterRequest;
 import com.example.panelplus.dto.response.TokenResponse;
 import com.example.panelplus.entity.User;
+import com.example.panelplus.exception.BaseException;
 import com.example.panelplus.repository.UserRepository;
 import com.example.panelplus.security.JwtService;
 import com.example.panelplus.util.ApiResponse;
@@ -41,7 +42,7 @@ public class AuthController extends BaseController {
                     new UsernamePasswordAuthenticationToken(request.username(), request.password())
             );
         } catch (AuthenticationException e) {
-            throw new BadCredentialsException("Invalid username or password");
+            throw new BaseException("Invalid username or password", HttpStatus.UNAUTHORIZED);
         }
         String token = jwtService.generateToken(request.username());
         return ok(new TokenResponse(token));

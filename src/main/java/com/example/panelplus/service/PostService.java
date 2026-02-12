@@ -7,6 +7,7 @@ import com.example.panelplus.entity.Language;
 import com.example.panelplus.entity.Post;
 import com.example.panelplus.entity.PostTranslation;
 import com.example.panelplus.entity.User;
+import com.example.panelplus.exception.BaseException;
 import com.example.panelplus.mapper.PostMapper;
 import com.example.panelplus.repository.LanguageRepository;
 import com.example.panelplus.repository.PostRepository;
@@ -15,6 +16,7 @@ import com.example.panelplus.repository.UserRepository;
 import com.example.panelplus.util.UtilService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -70,7 +72,7 @@ public class PostService extends BaseService<Post, UUID, PostRepository> {
 
     public PostResponse update(UUID id, PostRequest request) {
         Post post = getRepository().findById(id)
-                .orElseThrow(() -> new RuntimeException("Post not found"));
+                .orElseThrow(() -> new BaseException("Post not found", HttpStatus.NOT_FOUND));
 
         // Ana alanları güncelle
         postMapper.updateEntity(post, request);
@@ -88,7 +90,7 @@ public class PostService extends BaseService<Post, UUID, PostRepository> {
     public PostResponse get(UUID id) {
         return getRepository().findById(id)
                 .map(postMapper::toResponse)
-                .orElseThrow(() -> new RuntimeException("Post not found"));
+                .orElseThrow(() -> new BaseException("Post not found", HttpStatus.NOT_FOUND));
     }
 
     @Transactional(readOnly = true)
@@ -99,7 +101,7 @@ public class PostService extends BaseService<Post, UUID, PostRepository> {
 
     public void softDelete(UUID id) {
         Post post = getRepository().findById(id)
-                .orElseThrow(() -> new RuntimeException("Post not found"));
+                .orElseThrow(() -> new BaseException("Post not found", HttpStatus.NOT_FOUND));
         post.setDeletedAt(now());
         getRepository().save(post);
     }
@@ -142,17 +144,17 @@ public class PostService extends BaseService<Post, UUID, PostRepository> {
     public void addTranslation(UUID postId, PostTranslationRequest dto) {
 
         Post post = getRepository().findById(postId)
-                .orElseThrow(() -> new RuntimeException("Post not found"));
+                .orElseThrow(() -> new BaseException("Post not found", HttpStatus.NOT_FOUND));
 
         boolean exists = postTranslationRepository
                 .existsByPostIdAndLanguage_Code(postId, dto.language());
 
         if (exists) {
-            throw new RuntimeException("Translation already exists for this language");
+            throw new BaseException("Translation already exists for this language", HttpStatus.ALREADY_REPORTED);
         }
 
         Language language = languageRepository.findById(dto.language())
-                .orElseThrow(() -> new RuntimeException("Language not found"));
+                .orElseThrow(() -> new BaseException("Language not found", HttpStatus.NOT_FOUND));
 
         PostTranslation translation = postMapper.toTranslationEntity(dto);
         translation.setId(UUID.randomUUID());

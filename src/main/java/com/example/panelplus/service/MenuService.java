@@ -6,6 +6,7 @@ import com.example.panelplus.dto.response.MenuResponse;
 import com.example.panelplus.entity.Language;
 import com.example.panelplus.entity.Menu;
 import com.example.panelplus.entity.MenuTranslation;
+import com.example.panelplus.exception.BaseException;
 import com.example.panelplus.mapper.MenuMapper;
 import com.example.panelplus.repository.LanguageRepository;
 import com.example.panelplus.repository.MenuRepository;
@@ -13,6 +14,7 @@ import com.example.panelplus.repository.MenuTranslationRepository;
 import com.example.panelplus.util.UtilService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -42,7 +44,7 @@ public class MenuService extends BaseService<Menu, UUID, MenuRepository>  {
 
         if (request.parentId() != null) {
             Menu parent = getRepository().findById(request.parentId())
-                    .orElseThrow(() -> new RuntimeException("Parent Menu not found"));
+                    .orElseThrow(() -> new BaseException("Parent Menu Not Found", HttpStatus.NOT_FOUND));
             menu.setParent(parent);
         }
 
@@ -52,7 +54,7 @@ public class MenuService extends BaseService<Menu, UUID, MenuRepository>  {
             }
 
             for (MenuTranslationRequest trDto : request.translations()) {
-                Language language = languageRepository.findById(trDto.language()).orElseThrow(() -> new RuntimeException("Language not found: " + trDto.language()));
+                Language language = languageRepository.findById(trDto.language()).orElseThrow(() ->  new BaseException("Language not found" + trDto.language(), HttpStatus.NOT_FOUND));
 
                 MenuTranslation tr = menuMapper.toTranslationEntity(trDto);
                 tr.setSlug(UtilService.toSlug(trDto.name()));
@@ -68,17 +70,17 @@ public class MenuService extends BaseService<Menu, UUID, MenuRepository>  {
 
     public MenuResponse update(UUID id, MenuRequest request) {
         Menu menu = getRepository().findById(id)
-                .orElseThrow(() -> new RuntimeException("Menu not found"));
+                .orElseThrow(() ->  new BaseException("Language not found", HttpStatus.NOT_FOUND));
 
         menuMapper.updateEntity(menu, request);
 
         if (request.parentId() != null) {
             // Kendisini parent yapmasını engelle
             if (request.parentId().equals(menu.getId())) {
-                throw new RuntimeException("A menu cannot be its own parent");
+                throw new BaseException("A menu cannot be its own parent", HttpStatus.CONFLICT);
             }
             Menu parent = getRepository().findById(request.parentId())
-                    .orElseThrow(() -> new RuntimeException("Parent Menu not found"));
+                    .orElseThrow(() -> new  BaseException("Parent Menu Not Found", HttpStatus.NOT_FOUND));
             menu.setParent(parent);
         } else {
             menu.setParent(null); // Parent'ı kaldır (Root menü yap)
@@ -96,7 +98,7 @@ public class MenuService extends BaseService<Menu, UUID, MenuRepository>  {
     public MenuResponse get(UUID id) {
         return getRepository().findById(id)
                 .map(menuMapper::toResponse)
-                .orElseThrow(() -> new RuntimeException("Menu not found"));
+                .orElseThrow(() -> new  BaseException("Menu not found", HttpStatus.NOT_FOUND));
     }
 
     @Transactional(readOnly = true)
@@ -107,7 +109,7 @@ public class MenuService extends BaseService<Menu, UUID, MenuRepository>  {
 
     public void softDelete(UUID id) {
         Menu menu = getRepository().findById(id)
-                .orElseThrow(() -> new RuntimeException("Menu not found"));
+                .orElseThrow(() -> new  BaseException("Menu not found", HttpStatus.NOT_FOUND));
 
         menu.setDeletedAt(now());
         getRepository().save(menu);
@@ -132,7 +134,7 @@ public class MenuService extends BaseService<Menu, UUID, MenuRepository>  {
                 menuMapper.updateTranslation(tr, dto);
             } else {
                 Language language = languageRepository.findById(dto.language())
-                        .orElseThrow(() -> new RuntimeException("Language not found: " + dto.language()));
+                        .orElseThrow(() -> new BaseException("Language not found: " + dto.language(), HttpStatus.NOT_FOUND));
 
                 MenuTranslation newTr = menuMapper.toTranslationEntity(dto);
                 newTr.setSlug(UtilService.toSlug(dto.name()));
@@ -150,7 +152,7 @@ public class MenuService extends BaseService<Menu, UUID, MenuRepository>  {
     @Transactional
     public void addTranslation(UUID menuId, MenuTranslationRequest dto) {
         Menu menu = getRepository().findById(menuId)
-                .orElseThrow(() -> new RuntimeException("Menu not found"));
+                .orElseThrow(() -> new  BaseException("Menu not found", HttpStatus.NOT_FOUND));
 
         boolean exists = menuTranslationRepository
                 .existsByLanguageAndSlug(dto.language(), dto.name()); // veya sadece dil kontrolü
@@ -162,7 +164,7 @@ public class MenuService extends BaseService<Menu, UUID, MenuRepository>  {
         }
 
         Language language = languageRepository.findById(dto.language())
-                .orElseThrow(() -> new RuntimeException("Language not found"));
+                .orElseThrow(() -> new BaseException("Language not found", HttpStatus.NOT_FOUND));
 
         MenuTranslation tr = menuMapper.toTranslationEntity(dto);
         tr.setSlug(UtilService.toSlug(dto.name()));
