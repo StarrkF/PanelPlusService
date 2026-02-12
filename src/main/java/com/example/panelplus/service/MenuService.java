@@ -171,6 +171,10 @@ public class MenuService extends BaseService<Menu, UUID, MenuRepository>  {
         tr.setMenu(menu);
         tr.setLanguage(language);
 
-        menuTranslationRepository.save(tr);
+        if (menu.getTranslations() == null) {
+            menu.setTranslations(new HashSet<>());
+        }
+        menu.getTranslations().add(tr);
+        getRepository().save(menu);
     }
 }

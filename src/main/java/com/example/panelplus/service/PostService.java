@@ -129,6 +129,7 @@ public class PostService extends BaseService<Post, UUID, PostRepository> {
                 // Yeni çeviri ekle
                 Language language = languageRepository.getReferenceById(dto.language());
                 PostTranslation newTr = postMapper.toTranslationEntity(dto);
+                newTr.setSlug(UtilService.toSlug(dto.title()));
                 newTr.setPost(entity);
                 newTr.setLanguage(language);
                 currentTranslations.add(newTr);
@@ -158,10 +159,11 @@ public class PostService extends BaseService<Post, UUID, PostRepository> {
                 .orElseThrow(() -> new BaseException("Language not found", HttpStatus.NOT_FOUND));
 
         PostTranslation translation = postMapper.toTranslationEntity(dto);
-        translation.setId(UUID.randomUUID());
         translation.setPost(post);
         translation.setLanguage(language);
+        translation.setSlug(UtilService.toSlug(dto.title()));
 
-        postTranslationRepository.save(translation);
+        post.getTranslations().add(translation);
+        getRepository().save(post);
     }
 }
