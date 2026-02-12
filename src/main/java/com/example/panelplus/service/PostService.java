@@ -13,6 +13,7 @@ import com.example.panelplus.repository.LanguageRepository;
 import com.example.panelplus.repository.PostRepository;
 import com.example.panelplus.repository.PostTranslationRepository;
 import com.example.panelplus.repository.UserRepository;
+import com.example.panelplus.security.AuthUtil;
 import com.example.panelplus.util.UtilService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -44,7 +45,7 @@ public class PostService extends BaseService<Post, UUID, PostRepository> {
     public PostResponse create(PostRequest request) {
         Post post = postMapper.toEntity(request);
 
-        User user = userRepository.getReferenceById(request.userId());
+        User user = AuthUtil.getCurrentUserOrThrow();
         post.setUser(user);
 
         // Translations işlemleri
