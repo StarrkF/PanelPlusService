@@ -13,4 +13,8 @@ public interface MenuPostRepository extends JpaRepository<MenuPost, MenuPost.Pk>
     List<MenuPost> findByMenuId(UUID menuId);
 
     List<MenuPost> findByPostId(UUID postId);
+
+    boolean existsByMenuIdAndPostId(UUID menuId, UUID postId);
+
+    void deleteByMenuIdAndPostId(UUID menuId, UUID postId);
 }

@@ -10,5 +10,6 @@ public record PostResponse(
         Integer status,
         LocalDateTime createdAt,
         LocalDateTime updatedAt,
-        List<PostTranslationResponse> translations
+        List<PostTranslationResponse> translations,
+        List<PostMenuLinkResponse> menus
 ) {}

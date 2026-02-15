@@ -2,6 +2,7 @@ package com.example.panelplus.controller;
 
 import com.example.panelplus.dto.request.PostRequest;
 import com.example.panelplus.dto.request.PostTranslationRequest;
+import com.example.panelplus.dto.response.PostMenuLinkResponse;
 import com.example.panelplus.dto.response.PostResponse;
 import com.example.panelplus.entity.Post;
 import com.example.panelplus.mapper.PostMapper;
@@ -51,5 +52,25 @@ public class PostController extends BaseController {
     public ResponseEntity<ApiResponse<Void>> addTranslation(@PathVariable UUID postId,  @RequestBody PostTranslationRequest request ) {
         postService.addTranslation(postId, request);
         return ok();
+    }
+
+    // Menu linking endpoints
+    @PostMapping("/{postId}/menus/{menuId}")
+    public ResponseEntity<ApiResponse<Void>> addMenu(
+            @PathVariable UUID postId,
+            @PathVariable UUID menuId,
+            @RequestParam(name = "weight", required = false) Integer weight
+    ) {
+        postService.addMenu(postId, menuId, weight);
+        return ok();
+    }
+
+    @DeleteMapping("/{postId}/menus/{menuId}")
+    public ResponseEntity<ApiResponse<Void>> removeMenu(
+            @PathVariable UUID postId,
+            @PathVariable UUID menuId
+    ) {
+        postService.removeMenu(postId, menuId);
+        return noContent();
     }
 }

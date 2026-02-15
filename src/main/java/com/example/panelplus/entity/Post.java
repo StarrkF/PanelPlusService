@@ -29,4 +29,7 @@ public class Post extends BaseEntity  {
 
     @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<PostTranslation> translations = new HashSet<>();
+
+    @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<MenuPost> menuPosts = new HashSet<>();
 }

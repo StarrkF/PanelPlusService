@@ -2,14 +2,19 @@ package com.example.panelplus.service;
 
 import com.example.panelplus.dto.request.PostRequest;
 import com.example.panelplus.dto.request.PostTranslationRequest;
+import com.example.panelplus.dto.response.PostMenuLinkResponse;
 import com.example.panelplus.dto.response.PostResponse;
 import com.example.panelplus.entity.Language;
+import com.example.panelplus.entity.Menu;
+import com.example.panelplus.entity.MenuPost;
 import com.example.panelplus.entity.Post;
 import com.example.panelplus.entity.PostTranslation;
 import com.example.panelplus.entity.User;
 import com.example.panelplus.exception.BaseException;
 import com.example.panelplus.mapper.PostMapper;
 import com.example.panelplus.repository.LanguageRepository;
+import com.example.panelplus.repository.MenuPostRepository;
+import com.example.panelplus.repository.MenuRepository;
 import com.example.panelplus.repository.PostRepository;
 import com.example.panelplus.repository.PostTranslationRepository;
 import com.example.panelplus.repository.UserRepository;
@@ -33,13 +38,17 @@ public class PostService extends BaseService<Post, UUID, PostRepository> {
     private final LanguageRepository languageRepository;
     private final PostTranslationRepository postTranslationRepository;
     private final UserRepository userRepository;
+    private final MenuRepository menuRepository;
+    private final MenuPostRepository menuPostRepository;
 
-    public PostService(PostRepository repo, PostMapper postMapper, LanguageRepository languageRepository, PostTranslationRepository postTranslationRepository, UserRepository userRepository) {
+    public PostService(PostRepository repo, PostMapper postMapper, LanguageRepository languageRepository, PostTranslationRepository postTranslationRepository, UserRepository userRepository, MenuRepository menuRepository, MenuPostRepository menuPostRepository) {
         super(repo);
         this.postMapper = postMapper;
         this.languageRepository = languageRepository;
         this.postTranslationRepository = postTranslationRepository;
         this.userRepository = userRepository;
+        this.menuRepository = menuRepository;
+        this.menuPostRepository = menuPostRepository;
     }
 
     public PostResponse create(PostRequest request) {
@@ -165,5 +174,52 @@ public class PostService extends BaseService<Post, UUID, PostRepository> {
 
         post.getTranslations().add(translation);
         getRepository().save(post);
+    }
+
+    // Menu relation methods
+    @Transactional
+    public void addMenu(UUID postId, UUID menuId, Integer weight) {
+        Post post = getRepository().findById(postId)
+                .orElseThrow(() -> new BaseException("Post not found", HttpStatus.NOT_FOUND));
+        Menu menu = menuRepository.findById(menuId)
+                .orElseThrow(() -> new BaseException("Menu not found", HttpStatus.NOT_FOUND));
+
+        if (weight == null) weight = 0;
+
+        boolean exists = menuPostRepository.existsByMenuIdAndPostId(menuId, postId);
+        if (exists) {
+            throw new BaseException("Menu already linked to post", HttpStatus.CONFLICT);
+        }
+        MenuPost link = MenuPost.builder()
+                .menu(menu)
+                .post(post)
+                .weight(weight)
+                .build();
+        menuPostRepository.save(link);
+    }
+
+    @Transactional
+    public void removeMenu(UUID postId, UUID menuId) {
+        boolean exists = menuPostRepository.existsByMenuIdAndPostId(menuId, postId);
+        if (!exists) {
+            throw new BaseException("Menu link not found for post", HttpStatus.NOT_FOUND);
+        }
+        menuPostRepository.deleteByMenuIdAndPostId(menuId, postId);
+    }
+
+    @Transactional(readOnly = true)
+    public java.util.List<PostMenuLinkResponse> listMenus(UUID postId) {
+        // Ensure post exists to return 404 for invalid id
+        getRepository().findById(postId)
+                .orElseThrow(() -> new BaseException("Post not found", HttpStatus.NOT_FOUND));
+        return menuPostRepository.findByPostId(postId).stream()
+                .map(mp -> new PostMenuLinkResponse(
+                        mp.getMenu().getId(),
+                        mp.getMenu().getTranslations() == null || mp.getMenu().getTranslations().isEmpty()
+                                ? null
+                                : mp.getMenu().getTranslations().iterator().next().getName(),
+                        mp.getWeight()
+                ))
+                .toList();
     }
 }
