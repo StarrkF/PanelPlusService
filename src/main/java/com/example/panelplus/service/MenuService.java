@@ -69,21 +69,28 @@ public class MenuService extends BaseService<Menu, UUID, MenuRepository>  {
     }
 
     public MenuResponse update(UUID id, MenuRequest request) {
+        // 1. "Language not found" mesajı "Menu not found" olarak düzeltildi
         Menu menu = getRepository().findById(id)
-                .orElseThrow(() ->  new BaseException("Language not found", HttpStatus.NOT_FOUND));
+                .orElseThrow(() -> new BaseException("Menu not found", HttpStatus.NOT_FOUND));
 
         menuMapper.updateEntity(menu, request);
 
         if (request.parentId() != null) {
-            // Kendisini parent yapmasını engelle
             if (request.parentId().equals(menu.getId())) {
                 throw new BaseException("A menu cannot be its own parent", HttpStatus.CONFLICT);
             }
+
             Menu parent = getRepository().findById(request.parentId())
-                    .orElseThrow(() -> new  BaseException("Parent Menu Not Found", HttpStatus.NOT_FOUND));
+                    .orElseThrow(() -> new BaseException("Parent Menu Not Found", HttpStatus.NOT_FOUND));
+
+            // KRİTİK KONTROL: Seçilen parent, bu menünün bir alt menüsü mü?
+            if (isChildOf(parent, menu.getId())) {
+                throw new BaseException("A menu cannot set its own child as a parent", HttpStatus.CONFLICT);
+            }
+
             menu.setParent(parent);
         } else {
-            menu.setParent(null); // Parent'ı kaldır (Root menü yap)
+            menu.setParent(null);
         }
 
         if (request.translations() != null) {
@@ -115,6 +122,15 @@ public class MenuService extends BaseService<Menu, UUID, MenuRepository>  {
         getRepository().save(menu);
     }
 
+    // Sonsuz döngüyü engelleyen yardımcı recursive fonksiyon
+    private boolean isChildOf(Menu currentParent, UUID targetMenuId) {
+        if (currentParent == null) return false;
+        if (currentParent.getParent() == null) return false;
+        if (currentParent.getParent().getId().equals(targetMenuId)) return true;
+
+        return isChildOf(currentParent.getParent(), targetMenuId);
+    }
+
     private void mergeTranslations(Menu entity, List<MenuTranslationRequest> dtos) {
         if (dtos == null) return;
 
@@ -124,14 +140,16 @@ public class MenuService extends BaseService<Menu, UUID, MenuRepository>  {
             entity.setTranslations(currentTranslations);
         }
 
+        // Mevcut dilleri güncelle veya yeni ekle
         for (MenuTranslationRequest dto : dtos) {
             Optional<MenuTranslation> existingTr = currentTranslations.stream()
                     .filter(t -> t.getLanguage().getCode().equals(dto.language()))
                     .findFirst();
 
             if (existingTr.isPresent()) {
-                MenuTranslation tr = existingTr.get();
-                menuMapper.updateTranslation(tr, dto);
+                menuMapper.updateTranslation(existingTr.get(), dto);
+                // slug değişen isme göre güncellensin istersek:
+                existingTr.get().setSlug(UtilService.toSlug(dto.name()));
             } else {
                 Language language = languageRepository.findById(dto.language())
                         .orElseThrow(() -> new BaseException("Language not found: " + dto.language(), HttpStatus.NOT_FOUND));
@@ -144,28 +162,35 @@ public class MenuService extends BaseService<Menu, UUID, MenuRepository>  {
             }
         }
 
-        currentTranslations.removeIf(tr ->
-                dtos.stream().noneMatch(dto -> dto.language().equals(tr.getLanguage().getCode()))
-        );
+        // İstekte gelmeyen dilleri temizle (Hibernate güvenli yöntem)
+        List<MenuTranslation> toRemove = currentTranslations.stream()
+                .filter(tr -> dtos.stream().noneMatch(dto -> dto.language().equals(tr.getLanguage().getCode())))
+                .toList();
+
+        toRemove.forEach(currentTranslations::remove);
     }
 
     @Transactional
     public void addTranslation(UUID menuId, MenuTranslationRequest dto) {
         Menu menu = getRepository().findById(menuId)
-                .orElseThrow(() -> new  BaseException("Menu not found", HttpStatus.NOT_FOUND));
+                .orElseThrow(() -> new BaseException("Menu not found", HttpStatus.NOT_FOUND));
 
-        boolean exists = menuTranslationRepository
-                .existsByLanguageAndSlug(dto.language(), dto.name()); // veya sadece dil kontrolü
+        // DOĞRU KONTROL: Bu menüye bu dil daha önce eklenmiş mi?
+        boolean isLanguageAlreadyDefined = menuTranslationRepository
+                .existsByMenuIdAndLanguageCode(menuId, dto.language());
 
-        if (exists) {
-            // Basit dil kontrolü (Slug kontrolü değil, dilin var olup olmadığı)
-            // Eğer detaylı kontrol isterseniz: existsByMenuIdAndLanguage_Id gibi bir repo metodu gerekebilir
-            // Şimdilik sadece logic'i ekliyoruz:
+        if (isLanguageAlreadyDefined) {
+            throw new BaseException(
+                    "This language translation already exists for the selected menu. Use update instead.",
+                    HttpStatus.CONFLICT
+            );
         }
 
+        // Dil kontrolü ve yükleme
         Language language = languageRepository.findById(dto.language())
-                .orElseThrow(() -> new BaseException("Language not found", HttpStatus.NOT_FOUND));
+                .orElseThrow(() -> new BaseException("Language not found: " + dto.language(), HttpStatus.NOT_FOUND));
 
+        // Entity oluşturma ve bağlama işlemleri
         MenuTranslation tr = menuMapper.toTranslationEntity(dto);
         tr.setSlug(UtilService.toSlug(dto.name()));
         tr.setMenu(menu);
@@ -174,7 +199,8 @@ public class MenuService extends BaseService<Menu, UUID, MenuRepository>  {
         if (menu.getTranslations() == null) {
             menu.setTranslations(new HashSet<>());
         }
+
         menu.getTranslations().add(tr);
-        getRepository().save(menu);
+        getRepository().save(menu); // İlişki cascade tanımlıysa kaydeder
     }
 }

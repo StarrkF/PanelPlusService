@@ -16,4 +16,6 @@ public interface MenuTranslationRepository extends JpaRepository<MenuTranslation
     List<MenuTranslation> findByLanguage(String language);
 
     boolean existsByLanguageAndSlug(String languageId, String slug);
+
+    boolean existsByMenuIdAndLanguageCode(UUID menuId, String languageCode);
 }
