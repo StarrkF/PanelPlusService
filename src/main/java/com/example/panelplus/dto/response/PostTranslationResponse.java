@@ -5,5 +5,7 @@ public record PostTranslationResponse(
         String title,
         String slug,
         String subtitle,
-        String body
+        String body,
+        String metaTitle,
+        String metaDescription
 ) {}

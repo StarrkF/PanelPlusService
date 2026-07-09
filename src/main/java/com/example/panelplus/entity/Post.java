@@ -27,6 +27,14 @@ public class Post extends BaseEntity  {
     @Column(nullable = false)
     private Integer status;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "banner_image_id")
+    private Document bannerImage;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "image_id")
+    private Document image;
+
     @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<PostTranslation> translations = new HashSet<>();
 

@@ -2,6 +2,7 @@ package com.example.panelplus.mapper;
 
 import com.example.panelplus.dto.request.PostRequest;
 import com.example.panelplus.dto.request.PostTranslationRequest;
+import com.example.panelplus.dto.response.MenuResponse;
 import com.example.panelplus.dto.response.PostMenuLinkResponse;
 import com.example.panelplus.dto.response.PostResponse;
 import com.example.panelplus.dto.response.PostTranslationResponse;
@@ -16,9 +17,15 @@ import org.mapstruct.MappingTarget;
 import org.mapstruct.Named;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
-@Mapper(componentModel = "spring")
+@Mapper(
+        componentModel = "spring",
+        uses = {
+                MenuMapper.class
+        }
+)
 public interface PostMapper {
 
     @Mapping(target = "translations", ignore = true)
@@ -51,12 +58,25 @@ public interface PostMapper {
 
     List<PostMenuLinkResponse> toMenuLinkResponseList(List<MenuPost> entities);
 
+    default List<MenuResponse> mapMenuPostsToMenus(Set<MenuPost> menuPosts) {
+        if (menuPosts == null || menuPosts.isEmpty()) {
+            return List.of();
+        }
+
+        return menuPosts.stream()
+                .map(MenuPost::getMenu)
+                .filter(Objects::nonNull)
+                .map(this::mapMenuToResponse)
+                .toList();
+    }
+
+    MenuResponse mapMenuToResponse(Menu menu);
+
     @Named("menuName")
     default String mapMenuName(Menu menu) {
         if (menu == null) return null;
         Set<MenuTranslation> translations = menu.getTranslations();
         if (translations == null || translations.isEmpty()) return null;
-        // Return the first available name (no language filtering specified)
         return translations.iterator().next().getName();
     }
 }

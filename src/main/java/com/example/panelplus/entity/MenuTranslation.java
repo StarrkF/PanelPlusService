@@ -17,7 +17,7 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class MenuTranslation {
+public class MenuTranslation extends BaseEntity {
 
     @Id
     @GeneratedValue

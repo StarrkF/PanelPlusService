@@ -2,16 +2,10 @@ package com.example.panelplus.mapper;
 
 import com.example.panelplus.dto.request.MenuRequest;
 import com.example.panelplus.dto.request.MenuTranslationRequest;
-import com.example.panelplus.dto.request.PostRequest;
-import com.example.panelplus.dto.request.PostTranslationRequest;
 import com.example.panelplus.dto.response.MenuResponse;
 import com.example.panelplus.dto.response.MenuTranslationResponse;
-import com.example.panelplus.dto.response.PostResponse;
-import com.example.panelplus.dto.response.PostTranslationResponse;
 import com.example.panelplus.entity.Menu;
 import com.example.panelplus.entity.MenuTranslation;
-import com.example.panelplus.entity.Post;
-import com.example.panelplus.entity.PostTranslation;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;

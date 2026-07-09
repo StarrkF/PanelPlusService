@@ -4,12 +4,7 @@ import com.example.panelplus.dto.request.PostRequest;
 import com.example.panelplus.dto.request.PostTranslationRequest;
 import com.example.panelplus.dto.response.PostMenuLinkResponse;
 import com.example.panelplus.dto.response.PostResponse;
-import com.example.panelplus.entity.Language;
-import com.example.panelplus.entity.Menu;
-import com.example.panelplus.entity.MenuPost;
-import com.example.panelplus.entity.Post;
-import com.example.panelplus.entity.PostTranslation;
-import com.example.panelplus.entity.User;
+import com.example.panelplus.entity.*;
 import com.example.panelplus.exception.BaseException;
 import com.example.panelplus.mapper.PostMapper;
 import com.example.panelplus.repository.LanguageRepository;
@@ -25,6 +20,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.*;
 
@@ -37,18 +33,18 @@ public class PostService extends BaseService<Post, UUID, PostRepository> {
     private final PostMapper postMapper;
     private final LanguageRepository languageRepository;
     private final PostTranslationRepository postTranslationRepository;
-    private final UserRepository userRepository;
     private final MenuRepository menuRepository;
     private final MenuPostRepository menuPostRepository;
+    private final DocumentStorageService documentStorageService;
 
-    public PostService(PostRepository repo, PostMapper postMapper, LanguageRepository languageRepository, PostTranslationRepository postTranslationRepository, UserRepository userRepository, MenuRepository menuRepository, MenuPostRepository menuPostRepository) {
+    public PostService(PostRepository repo, PostMapper postMapper, LanguageRepository languageRepository, PostTranslationRepository postTranslationRepository, MenuRepository menuRepository, MenuPostRepository menuPostRepository, DocumentStorageService documentStorageService) {
         super(repo);
         this.postMapper = postMapper;
         this.languageRepository = languageRepository;
         this.postTranslationRepository = postTranslationRepository;
-        this.userRepository = userRepository;
         this.menuRepository = menuRepository;
         this.menuPostRepository = menuPostRepository;
+        this.documentStorageService = documentStorageService;
     }
 
     public PostResponse create(PostRequest request) {
@@ -174,6 +170,54 @@ public class PostService extends BaseService<Post, UUID, PostRepository> {
 
         post.getTranslations().add(translation);
         getRepository().save(post);
+    }
+
+    public PostResponse updateBannerImage(UUID postId, MultipartFile file, String altText) {
+        Post post = getRepository().findById(postId)
+                .orElseThrow(() -> new IllegalArgumentException("Post bulunamadı."));
+
+        Document document = documentStorageService.store(file, "posts/" + postId + "/banner", altText);
+
+        post.setBannerImage(document);
+
+        Post savedPost = getRepository().save(post);
+
+        return postMapper.toResponse(savedPost);
+    }
+
+    public PostResponse updateImage(UUID postId, MultipartFile file, String altText) {
+        Post post = getRepository().findById(postId)
+                .orElseThrow(() -> new IllegalArgumentException("Post bulunamadı."));
+
+        Document document = documentStorageService.store(file, "posts/" + postId + "/image", altText);
+
+        post.setImage(document);
+
+        Post savedPost = getRepository().save(post);
+
+        return postMapper.toResponse(savedPost);
+    }
+
+    public PostResponse removeBannerImage(UUID postId) {
+        Post post = getRepository().findById(postId)
+                .orElseThrow(() -> new IllegalArgumentException("Post bulunamadı."));
+
+        post.setBannerImage(null);
+
+        Post savedPost = getRepository().save(post);
+
+        return postMapper.toResponse(savedPost);
+    }
+
+    public PostResponse removeImage(UUID postId) {
+        Post post = getRepository().findById(postId)
+                .orElseThrow(() -> new IllegalArgumentException("Post bulunamadı."));
+
+        post.setImage(null);
+
+        Post savedPost = getRepository().save(post);
+
+        return postMapper.toResponse(savedPost);
     }
 
     // Menu relation methods

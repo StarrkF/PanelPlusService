@@ -18,7 +18,7 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class PostTranslation {
+public class PostTranslation extends BaseEntity {
 
     @Id
     @GeneratedValue
@@ -36,6 +36,12 @@ public class PostTranslation {
     private String title;
 
     private String subtitle;
+
+    @Column(name = "meta_title")
+    private String metaTitle;
+
+    @Column(name = "meta_description", columnDefinition = "text")
+    private String metaDescription;
 
     @Column(nullable = false, columnDefinition = "text")
     private String body;

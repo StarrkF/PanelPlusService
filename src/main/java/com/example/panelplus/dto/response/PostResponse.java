@@ -8,8 +8,10 @@ public record PostResponse(
         UUID id,
         UUID userId,
         Integer status,
+        DocumentResponse bannerImage,
+        DocumentResponse image,
         LocalDateTime createdAt,
         LocalDateTime updatedAt,
         List<PostTranslationResponse> translations,
-        List<PostMenuLinkResponse> menus
+        List<MenuResponse> menus
 ) {}

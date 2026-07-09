@@ -11,5 +11,7 @@ public record PostTranslationRequest(
         String title,
         String subtitle,
         String body,
-        String slug
+        String slug,
+        String metaTitle,
+        String metaDescription
 ) {}
