@@ -29,7 +29,7 @@ public class LanguageService extends BaseService<Language, String, LanguageRepos
             throw new BaseException("Language with code " + request.code() + " already exists.", HttpStatus.ALREADY_REPORTED);
         }
 
-        if (request.defaultLanguage()) {
+        if (Boolean.TRUE.equals(request.defaultLanguage())) {
             resetDefaultLanguage();
         }
 
